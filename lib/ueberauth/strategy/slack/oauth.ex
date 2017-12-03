@@ -8,15 +8,22 @@ defmodule Ueberauth.Strategy.Slack.OAuth do
     authorize_url: "https://slack.com/oauth/authorize",
     token_url: "https://slack.com/api/oauth.access"
   ]
-
   def client(opts \\ []) do
-    slack_config = Application.get_env(:ueberauth, Ueberauth.Strategy.Slack.OAuth)
+    slack_config = Application.get_env(:ueberauth, Ueberauth.Strategy.Slack.OAuth) || []
     client_opts =
       @defaults
       |> Keyword.merge(slack_config)
       |> Keyword.merge(opts)
 
-    OAuth2.Client.new(opts)
+    OAuth2.Client.new(client_opts)
+  end
+
+  def get(token, url, params \\ %{}, headers \\ [], opts \\ []) do
+    url = [token: token]
+    |> client()
+    |> to_url(url, Map.put(params, "token", token.access_token))
+
+    OAuth2.Client.get(client, url, headers, opts)
   end
 
   def authorize_url!(params \\ [], opts \\ []) do
@@ -25,11 +32,13 @@ defmodule Ueberauth.Strategy.Slack.OAuth do
     |> OAuth2.Client.authorize_url!(params)
   end
 
+  @spec get_token!(List, Map) :: OAuth2.AccessToken
   def get_token!(params \\ [], options \\ %{}) do
-    headers        = Dict.get(options, :headers, [])
-    options        = Dict.get(options, :options, [])
-    client_options = Dict.get(options, :client_options, [])
-    OAuth2.Client.get_token!(client(client_options), params, headers, options)
+    headers = Map.get(options, :headers, [])
+    options = Map.get(options, :options, [])
+    client_options = options[:client_options] || []
+    client = OAuth2.Client.get_token!(client(client_options), params, headers, options || [])
+    client.token
   end
 
   # Strategy Callbacks
@@ -40,7 +49,27 @@ defmodule Ueberauth.Strategy.Slack.OAuth do
 
   def get_token(client, params, headers) do
     client
+    |> put_param(:client_secret, client.client_secret)
     |> put_header("Accept", "application/json")
     |> OAuth2.Strategy.AuthCode.get_token(params, headers)
+  end
+
+  defp endpoint("/" <> _path = endpoint, client), do: client.site <> endpoint
+  defp endpoint(endpoint, _client), do: endpoint
+
+  defp to_url(client, endpoint, params \\ nil) do
+    endpoint =
+      client
+      |> Map.get(endpoint, endpoint)
+      |> endpoint(client)
+
+    endpoint =
+      if params do
+        endpoint <> "?" <> URI.encode_query(params)
+      else
+        endpoint
+      end
+
+    endpoint
   end
 end

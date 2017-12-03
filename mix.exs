@@ -14,6 +14,7 @@ defmodule UeberauthSlack.Mixfile do
      source_url: "https://github.com/hassox/ueberauth_slack",
      homepage_url: "https://github.com/hassox/ueberauth_slack",
      description: description(),
+     elixirc_paths: elixirc_paths(Mix.env),
      deps: deps(),
      docs: docs()]
   end
@@ -24,11 +25,13 @@ defmodule UeberauthSlack.Mixfile do
 
   defp deps do
     [
-      {:oauth2, "0.6.0"},
+      {:oauth2, "~> 0.9.0"},
       {:ueberauth, "~> 0.4"},
 
       # dev/test dependencies
       {:credo, "~> 0.5", only: [:dev, :test]},
+      {:poison, "~> 3.0", only: :test},
+      {:bypass, "~> 0.6", only: :test},
       {:earmark, ">= 0.0.0", only: :dev},
       {:ex_doc, ">= 0.0.0", only: :dev},
     ]
@@ -48,4 +51,7 @@ defmodule UeberauthSlack.Mixfile do
       licenses: ["MIT"],
       links: %{"Slack": "https://github.com/hassox/ueberauth_slack"}]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 end
