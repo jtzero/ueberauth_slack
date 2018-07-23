@@ -23,6 +23,11 @@ defmodule Ueberauth.Strategy.Slack do
   alias Ueberauth.Auth.Credentials
   alias Ueberauth.Auth.Extra
 
+  def callback(conn) do
+    # or find the map in the list that isnt the atom
+    List.last(Tuple.to_list(Application.get_env(:ueberauth, Ueberauth)[:providers][:slack]))[:callback_url] || callback_url(conn)
+  end
+
   # When handling the request just redirect to Slack
   @doc false
   def handle_request!(conn) do
@@ -35,7 +40,7 @@ defmodule Ueberauth.Strategy.Slack do
     opts =
       if team, do: Keyword.put(opts, :team, team), else: opts
 
-    callback_url = callback_url(conn)
+    callback_url = callback(conn)
     callback_url =
       if String.ends_with?(callback_url, "?"), do: String.slice(callback_url, 0..-2), else: callback_url
 
@@ -55,7 +60,7 @@ defmodule Ueberauth.Strategy.Slack do
     params  = [code: code]
     options = %{
       options: [
-        client_options: [redirect_uri: callback_url(conn)]
+        client_options: [redirect_uri: callback(conn)]
       ]
     }
     token = apply(module, :get_token!, [params, options])
